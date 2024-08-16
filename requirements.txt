@@ -7,5 +7,4 @@ fitz
 streamlit
 PyPDF2==3.0.1
 reportlab==3.6.12
-pdfkit
 
