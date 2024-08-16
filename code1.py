@@ -4,6 +4,8 @@ from weasyprint import HTML
 import streamlit as st
 import tempfile
 import fitz  # PyMuPDF
+from docx import Document
+from io import BytesIO
 
 # Function to fetch and parse the webpage
 def fetch_webpage(url):
@@ -51,7 +53,7 @@ def extract_main_content(soup):
             sidebar.decompose()
         return str(main_content)
     else:
-        st.warning("Main content not found, using full page content. Please wait, generting PDF..........")
+        st.warning("Main content not found, using full page content.")
         return str(soup)
 
 # Function to modify the HTML to center-align images and add custom styles
@@ -93,7 +95,7 @@ def style_html_content(html_content):
 
     return str(soup)
 
-# Function to convert the webpage to PDF
+# Function to convert the HTML content to PDF
 def convert_to_pdf(html_content):
     try:
         html = HTML(string=html_content)
@@ -101,6 +103,38 @@ def convert_to_pdf(html_content):
         return pdf
     except Exception as e:
         st.error(f"Failed to generate PDF: {e}")
+        return None
+
+# Function to convert the HTML content to DOCX
+def convert_to_docx(html_content):
+    try:
+        soup = BeautifulSoup(html_content, "html.parser")
+        doc = Document()
+        
+        # Add the content to the document
+        for element in soup.body.children:
+            if element.name == 'h1':
+                doc.add_heading(element.get_text(), level=1)
+            elif element.name == 'h2':
+                doc.add_heading(element.get_text(), level=2)
+            elif element.name == 'h3':
+                doc.add_heading(element.get_text(), level=3)
+            elif element.name == 'p':
+                doc.add_paragraph(element.get_text())
+            elif element.name == 'img':
+                img_url = element.get('src')
+                if img_url:
+                    img_response = requests.get(img_url)
+                    img_response.raise_for_status()
+                    img_stream = BytesIO(img_response.content)
+                    doc.add_picture(img_stream)
+        
+        doc_stream = BytesIO()
+        doc.save(doc_stream)
+        doc_stream.seek(0)
+        return doc_stream.read()
+    except Exception as e:
+        st.error(f"Failed to generate DOCX: {e}")
         return None
 
 # Function to view PDF using PyMuPDF
@@ -117,13 +151,15 @@ def view_pdf(pdf_file):
 
 # Main function for Streamlit
 def main():
-    st.title("Webpage to PDF Converter")
+    st.title("Webpage to Document Converter")
 
     num_links = st.number_input("Enter the number of links (1 to 6):", min_value=1, max_value=6, step=1)
 
     urls = [st.text_input(f"Enter the URL for link {i + 1}:") for i in range(num_links)]
 
-    if st.button("Generate PDF"):
+    doc_type = st.selectbox("Select the document format:", options=["PDF", "DOCX"])
+
+    if st.button("Generate Document"):
         combined_html_content = ""
 
         for url in urls:
@@ -147,14 +183,10 @@ def main():
                     st.warning(f"Failed to retrieve the webpage content for URL: {url}")
 
         if combined_html_content:
-            pdf = convert_to_pdf(combined_html_content)
-            if pdf:
-                # Use a temporary file to save the PDF
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
-                    temp_file.write(pdf)
-                    temp_file.flush()
-                    
-                    # Provide download button before showing the PDF
+            if doc_type == "PDF":
+                pdf = convert_to_pdf(combined_html_content)
+                if pdf:
+                    # Provide download button for PDF
                     st.success("PDF generated successfully!")
                     st.download_button(
                         label="Download PDF",
@@ -162,13 +194,25 @@ def main():
                         file_name="combined_webpage.pdf",
                         mime="application/pdf"
                     )
-                    
-                    # Display the PDF content
                     st.write("Preview of the PDF content:")
-                    with open(temp_file.name, "rb") as f:
-                        view_pdf(f)
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+                        temp_file.write(pdf)
+                        temp_file.flush()
+                        with open(temp_file.name, "rb") as f:
+                            view_pdf(f)
+            elif doc_type == "DOCX":
+                docx_content = convert_to_docx(combined_html_content)
+                if docx_content:
+                    # Provide download button for DOCX
+                    st.success("DOCX generated successfully!")
+                    st.download_button(
+                        label="Download DOCX",
+                        data=docx_content,
+                        file_name="combined_webpage.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
         else:
-            st.warning("No valid content to generate PDF.")
+            st.warning("No valid content to generate document.")
 
 if __name__ == "__main__":
     main()
