@@ -7,3 +7,4 @@ fitz
 streamlit
 reportlab
 pdfkit
+python-docx
