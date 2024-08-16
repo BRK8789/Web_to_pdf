@@ -110,10 +110,14 @@ def convert_to_docx(html_content):
     try:
         soup = BeautifulSoup(html_content, "html.parser")
         doc = Document()
-        
-        # Add the content to the document
-        for element in soup.body.children:
-            if element.name == 'h1':
+
+        # Ensure body is not None
+        body = soup.body if soup.body else soup
+
+        for element in body.children:
+            if isinstance(element, str):  # Handle raw text
+                doc.add_paragraph(element)
+            elif element.name == 'h1':
                 doc.add_heading(element.get_text(), level=1)
             elif element.name == 'h2':
                 doc.add_heading(element.get_text(), level=2)
