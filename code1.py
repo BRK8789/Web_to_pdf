@@ -7,6 +7,7 @@ import fitz  # PyMuPDF
 from docx import Document
 from docx.shared import Inches
 from io import BytesIO
+from urllib.parse import urljoin
 
 # Function to fetch and parse the webpage
 def fetch_webpage(url):
@@ -107,7 +108,7 @@ def convert_to_pdf(html_content):
         return None
 
 # Function to convert the HTML content to DOCX
-def convert_to_docx(html_content):
+def convert_to_docx(html_content, base_url):
     try:
         soup = BeautifulSoup(html_content, "html.parser")
         doc = Document()
@@ -124,10 +125,15 @@ def convert_to_docx(html_content):
             elif element.name == 'img':
                 img_url = element.get('src')
                 if img_url:
-                    img_response = requests.get(img_url)
-                    img_response.raise_for_status()
-                    img_stream = BytesIO(img_response.content)
-                    doc.add_picture(img_stream, width=Inches(4))  # Adjust size as needed
+                    # Resolve relative URLs
+                    img_url = urljoin(base_url, img_url)
+                    try:
+                        img_response = requests.get(img_url)
+                        img_response.raise_for_status()
+                        img_stream = BytesIO(img_response.content)
+                        doc.add_picture(img_stream, width=Inches(4))  # Adjust size as needed
+                    except requests.RequestException as e:
+                        st.warning(f"Failed to retrieve image {img_url}: {e}")
 
             # Recursively process children of the element
             for child in element.children:
@@ -214,7 +220,7 @@ def main():
                         with open(temp_file.name, "rb") as f:
                             view_pdf(f)
             elif doc_type == "DOCX":
-                docx_content = convert_to_docx(combined_html_content)
+                docx_content = convert_to_docx(combined_html_content, base_url)
                 if docx_content:
                     # Provide download button for DOCX
                     st.success("DOCX generated successfully!")
