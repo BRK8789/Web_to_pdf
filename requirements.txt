@@ -5,6 +5,4 @@ streamlit
 PyMuPDF
 fitz
 streamlit
-pdfkit
 reportlab==3.6.12
-
