@@ -8,3 +8,4 @@ streamlit
 reportlab
 pdfkit
 python-docx
+docx
