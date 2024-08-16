@@ -112,11 +112,8 @@ def convert_to_docx(html_content):
         soup = BeautifulSoup(html_content, "html.parser")
         doc = Document()
 
-        # Define a function to handle different HTML elements
         def process_element(element):
-            if isinstance(element, str):
-                doc.add_paragraph(element)
-            elif element.name == 'h1':
+            if element.name == 'h1':
                 doc.add_heading(element.get_text(), level=1)
             elif element.name == 'h2':
                 doc.add_heading(element.get_text(), level=2)
@@ -131,14 +128,19 @@ def convert_to_docx(html_content):
                     img_response.raise_for_status()
                     img_stream = BytesIO(img_response.content)
                     doc.add_picture(img_stream, width=Inches(4))  # Adjust size as needed
+
             # Recursively process children of the element
             for child in element.children:
-                process_element(child)
+                if isinstance(child, str):
+                    doc.add_paragraph(child)
+                elif hasattr(child, 'name'):
+                    process_element(child)
 
         # Process the body or the whole HTML if no body tag is found
         body = soup.body if soup.body else soup
         for element in body.children:
-            process_element(element)
+            if hasattr(element, 'name'):
+                process_element(element)
         
         doc_stream = BytesIO()
         doc.save(doc_stream)
