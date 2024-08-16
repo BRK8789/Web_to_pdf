@@ -8,3 +8,4 @@ pdfkit
 PyMuPDF
 pdf2image 
 fitz
+pillow
