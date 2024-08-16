@@ -1,11 +1,5 @@
-streamlit
 requests
 beautifulsoup4
 weasyprint
-PyPDF2==3.0.1
-reportlab==3.6.12
-pdfkit
+streamlit
 PyMuPDF
-pdf2image 
-fitz
-pillow
