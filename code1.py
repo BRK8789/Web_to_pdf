@@ -5,6 +5,7 @@ import streamlit as st
 import tempfile
 import fitz  # PyMuPDF
 from docx import Document
+from docx.shared import Inches
 from io import BytesIO
 
 # Function to fetch and parse the webpage
@@ -111,11 +112,9 @@ def convert_to_docx(html_content):
         soup = BeautifulSoup(html_content, "html.parser")
         doc = Document()
 
-        # Ensure body is not None
-        body = soup.body if soup.body else soup
-
-        for element in body.children:
-            if isinstance(element, str):  # Handle raw text
+        # Define a function to handle different HTML elements
+        def process_element(element):
+            if isinstance(element, str):
                 doc.add_paragraph(element)
             elif element.name == 'h1':
                 doc.add_heading(element.get_text(), level=1)
@@ -131,7 +130,15 @@ def convert_to_docx(html_content):
                     img_response = requests.get(img_url)
                     img_response.raise_for_status()
                     img_stream = BytesIO(img_response.content)
-                    doc.add_picture(img_stream)
+                    doc.add_picture(img_stream, width=Inches(4))  # Adjust size as needed
+            # Recursively process children of the element
+            for child in element.children:
+                process_element(child)
+
+        # Process the body or the whole HTML if no body tag is found
+        body = soup.body if soup.body else soup
+        for element in body.children:
+            process_element(element)
         
         doc_stream = BytesIO()
         doc.save(doc_stream)
